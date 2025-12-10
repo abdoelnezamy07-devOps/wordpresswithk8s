@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-deploy
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: sql
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: sql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_DATABASE
+              value: wordpress
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: sql-secret
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: sql-storage
+      volumes:
+        - name: sql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc-1
