@@ -37,12 +37,12 @@ jobs:
       - name: Lint Helm Chart Syntax
         run: |
           echo "Checking Helm syntax..."
-          helm lint ./helm-chart
+          helm lint ./my-app-chart
 
       - name: Dry-Run Template Render
         run: |
           echo "Testing template rendering without contacting cluster..."
-          helm template wordpress-release ./helm-chart > rendered-manifests.yaml
+          helm template wordpress-release ./my-app-chart > rendered-manifests.yaml
 
   # ==========================================
   # 2. PHASE 2: SECURITY SCANNING
@@ -60,7 +60,7 @@ jobs:
 
       - name: Render Manifests for Scanning
         run: |
-          helm template wordpress-release ./helm-chart > k8s-manifests.yaml
+          helm template wordpress-release ./my-app-chart > k8s-manifests.yaml
 
       # فحص ملفات الـ K8s من أي ثغرات أمنية بـ Trivy
       - name: Run Trivy Config Vulnerability Scanner
@@ -107,7 +107,7 @@ jobs:
           
           echo "Deploying Release with Tag: $DEPLOY_TAG"
           
-          helm upgrade --install wordpress-app ./helm-chart \
+          helm upgrade --install wordpress-app ./my-app-chart \
             --namespace default \
             --set image.tag=$DEPLOY_TAG \
             --atomic \
