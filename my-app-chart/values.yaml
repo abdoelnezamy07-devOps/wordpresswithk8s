@@ -1,0 +1,91 @@
+#storageClassMySQL:
+#  name: sc-sql
+#  provisioner: ebs.csi.aws.com
+
+#storageclassWordPress:
+#  name: sc-wordpress
+#  provisioner: efs.csi.aws.com
+#  parameter:
+#    provisioningMode: efs-ap
+#    fileSystemId: 
+#    basepath: "/word"
+#    directoryPerms: "700"
+
+mysql:
+  name: wordpress
+  tier: sql
+  
+  replicas: 1
+  
+  image:
+    repository: mysql
+    tag: "8.0"
+  
+  secret:
+    name: sql-secret
+    key: password
+  
+  storage:
+    pvcName: pvc-sql
+    size: 10Gi
+    mountPath: /var/lib/mysql
+ 
+  storageClass:
+    name: sc-sql
+    provisioner: ebs.csi.aws.com
+  
+  service:
+    type: ClusterIP # أو ClusterIP / NodePort
+    port: 3306
+
+  resources:
+    limits:
+      cpu: 1200m
+      memory: 1256Mi
+    requests:
+      cpu: 1000m
+      memory: 1000Mi
+
+wordpress:
+  name: wordpress-deploy
+  replicas: 1
+  
+  image:
+    repository: wordpress
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    
+  database:
+    host: "sql-svc"
+    user: "root"
+    name: "wordpress"
+    secret:
+      name: "sql-secret"
+      key: "password"
+
+  service:
+    type: LoadBalancer # أو ClusterIP / NodePort
+    port: 80
+  
+  storage:
+    pvcName: "wordpress-pvc2"
+    mountPath: "/var/www/html"
+    size: 5Gi
+
+  storageClass:
+    name: sc-wordpress
+    provisioner: efs.csi.aws.com
+    parameter:
+      provisioningMode: efs-ap
+      fileSystemId: fs-07039a41a9e6b79c4 
+      basepath: "/word"
+      directoryPerms: 700
+
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi

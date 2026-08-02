@@ -1,0 +1,10 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.wordpress.storageClass.name }}
+provisioner: {{ .Values.wordpress.storageClass.provisioner }}
+parameters:
+  provisioningMode: {{ .Values.wordpress.storageClass.parameter.provisioningMode }}
+  fileSystemId: {{ .Values.wordpress.storageClass.parameter.fileSystemId }}
+  basepath: {{ .Values.wordpress.storageClass.parameter.basepath }}
+  directoryPerms: {{ .Values.wordpress.storageClass.parameter.directoryPerms | quote }}

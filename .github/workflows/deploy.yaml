@@ -1,0 +1,133 @@
+name: Production-Grade K8s CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# منع شغل 2 Pipelines مع بعض على نفس الـ Environment
+concurrency:
+  group: production
+  cancel-in-progress: true
+
+jobs:
+  # ==========================================
+  # 1. PHASE 1: LINT & VALIDATE (Fail Fast)
+  # ==========================================
+  validate:
+    name: 🔍 Validate & Lint Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.0'
+
+      # Caching لتسريع عمل الـ Helm Dependencies
+      - name: Cache Helm Charts
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/helm
+          key: ${{ runner.os }}-helm-${{ hashFiles('**/Chart.yaml') }}
+
+      - name: Lint Helm Chart Syntax
+        run: |
+          echo "Checking Helm syntax..."
+          helm lint ./helm-chart
+
+      - name: Dry-Run Template Render
+        run: |
+          echo "Testing template rendering without contacting cluster..."
+          helm template wordpress-release ./helm-chart > rendered-manifests.yaml
+
+  # ==========================================
+  # 2. PHASE 2: SECURITY SCANNING
+  # ==========================================
+  security-scan:
+    name: 🛡️ Security Scan Manifests & Images
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Render Manifests for Scanning
+        run: |
+          helm template wordpress-release ./helm-chart > k8s-manifests.yaml
+
+      # فحص ملفات الـ K8s من أي ثغرات أمنية بـ Trivy
+      - name: Run Trivy Config Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'k8s-manifests.yaml'
+          exit-code: '0' # غيرها لـ '1' لو عايز الـ Pipeline يرفض الـ Deploy عند وجود ثغرات خطيرة
+          severity: 'HIGH,CRITICAL'
+
+  # ==========================================
+  # 3. PHASE 3: SAFE & ATOMIC DEPLOYMENT
+  # ==========================================
+  deploy:
+    name: 🚀 Deploy to K8s Cluster (AWS EC2)
+    needs: [validate, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      # تجهيز الـ Kubeconfig الآمن لربط GitHub بـ AWS Kubeadm Master Node
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify Cluster Connectivity
+        run: |
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      # التحديث التلقائي بالـ Dynamic Tag والـ Atomic Rollback
+      - name: Helm Upgrade & Atomic Install
+        run: |
+          # استخدام Commit Hash كـ Tag فريد يمنع استخدام latest
+          DEPLOY_TAG="${GITHUB_SHA:~0,7}"
+          
+          echo "Deploying Release with Tag: $DEPLOY_TAG"
+          
+          helm upgrade --install wordpress-app ./helm-chart \
+            --namespace default \
+            --set image.tag=$DEPLOY_TAG \
+            --atomic \
+            --timeout 5m0s \
+            --wait
+
+      # ==========================================
+      # 4. PHASE 4: POST-DEPLOYMENT HEALTH CHECKS
+      # ==========================================
+      - name: Verify Workload Health
+        run: |
+          echo "Checking Rollout Status for Deployments..."
+          kubectl rollout status deployment/wordpress-app-wordpress-deploy --timeout=60s
+          
+          echo "Checking Endpoints Availability..."
+          ENDPOINTS=$(kubectl get ep wordpress-svc -o jsonpath='{.subsets[*].addresses[*].ip}')
+          if [ -z "$ENDPOINTS" ]; then
+            echo "❌ ERROR: No active endpoints found for wordpress-svc!"
+            exit 1
+          else
+            echo "✅ SUCCESS: Service is bound to Endpoints: $ENDPOINTS"
+          fi
+

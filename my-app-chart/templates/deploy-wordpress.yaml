@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.wordpress.name }}
+  labels:
+    app: {{ .Values.wordpress.name }}
+    tier: frontend
+spec:
+  replicas: {{ .Values.wordpress.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.wordpress.name }}
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.wordpress.name }}
+        tier: frontend
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 33
+      containers:
+        - name: wordpress-app
+          image: "{{ .Values.wordpress.image.repository }}:{{ .Values.wordpress.image.tag }}"
+          imagePullPolicy: {{ .Values.wordpress.image.pullPolicy }}
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: {{ .Values.wordpress.database.host | quote }}
+            - name: WORDPRESS_DB_USER
+              value: {{ .Values.wordpress.database.user | quote }}
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.wordpress.database.secret.name }}
+                  key: {{ .Values.wordpress.database.secret.key }}
+            - name: WORDPRESS_DB_NAME
+              value: {{ .Values.wordpress.database.name | quote }}
+          ports:
+            - containerPort: {{ .Values.wordpress.service.port }}
+          resources:
+            {{- toYaml .Values.wordpress.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.wordpress.storage.mountPath }}
+              name: wordpress-storage
+      volumes:
+        - name: wordpress-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.wordpress.storage.pvcName }}
