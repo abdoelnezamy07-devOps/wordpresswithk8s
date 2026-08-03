@@ -96,7 +96,7 @@ jobs:
 
       - name: Verify Cluster Connectivity
         run: |
-          kubectl cluster-info --insecure-skip-tls-verify
+          kubectl cluster-info 
           kubectl get nodes -o wide
 
       # التحديث التلقائي بالـ Dynamic Tag والـ Atomic Rollback
@@ -108,7 +108,6 @@ jobs:
           echo "Deploying Release with Tag: $DEPLOY_TAG"
           
           helm upgrade --install wordpress-app ./my-app-chart \
-            --kube-insecure-skip-tls-verify \
             --namespace default \
             --set image.tag=$DEPLOY_TAG \
             --atomic \
