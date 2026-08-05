@@ -66,7 +66,7 @@ spec:
         stage('Verify Health') {
             steps {
                 container('helm-kubectl') {
-                    sh 'kubectl rollout status deployment/wordpress -n ${NAMESPACE}'
+                    sh 'kubectl rollout status ${HELM_RELEASE_NAME} -n ${NAMESPACE}'
                 }
             }
         }
