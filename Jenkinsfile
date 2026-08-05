@@ -15,7 +15,7 @@ spec:
     - cat
     tty: true
   - name: trivy
-    image: aquasecurity/trivy:latest
+    image: ghcr.io/aquasecurity/trivy:latest
     command:
     - cat
     tty: true
@@ -81,7 +81,7 @@ spec:
             }
         }
         always {
-            cleanWs()
+            deleteDir()
         }
     }
 }
