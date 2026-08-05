@@ -58,7 +58,7 @@ spec:
                         helm upgrade --install ${HELM_RELEASE_NAME} ./my-app-chart \
                           --namespace ${NAMESPACE} \
                           --wait \
-                          --timeout 5m
+                          --timeout 10m
                     '''
                 }
             }
