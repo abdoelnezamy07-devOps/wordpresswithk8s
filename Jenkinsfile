@@ -66,7 +66,7 @@ spec:
         stage('Verify Health') {
             steps {
                 container('helm-kubectl') {
-                    sh 'kubectl rollout status deploy ${HELM_RELEASE_NAME} -n ${NAMESPACE}'
+                    sh 'kubectl rollout status deploy ${HELM_RELEASE_NAME}-${HELM_RELEASE_NAME}-deploy -n ${NAMESPACE}'
                 }
             }
         }
