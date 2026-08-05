@@ -38,7 +38,7 @@ spec:
         stage('Validate Helm Chart') {
             steps {
                 container('helm-kubectl') {
-                    sh 'helm lint ./wordpress-chart'
+                    sh 'helm lint ./my-app-chart'
                 }
             }
         }
@@ -46,7 +46,7 @@ spec:
         stage('Security Scan Manifests') {
             steps {
                 container('trivy') {
-                    sh 'trivy config ./wordpress-chart'
+                    sh 'trivy config ./my-app-chart'
                 }
             }
         }
@@ -55,7 +55,7 @@ spec:
             steps {
                 container('helm-kubectl') {
                     sh '''
-                        helm upgrade --install ${HELM_RELEASE_NAME} ./wordpress-chart \
+                        helm upgrade --install ${HELM_RELEASE_NAME} ./my-app-chart \
                           --namespace ${NAMESPACE} \
                           --wait \
                           --timeout 5m
