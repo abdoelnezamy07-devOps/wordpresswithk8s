@@ -57,8 +57,6 @@ spec:
                     sh '''
                         helm upgrade --install ${HELM_RELEASE_NAME} ./my-app-chart \
                           --namespace ${NAMESPACE} \
-			  --atomic \
-                  	  --cleanup-on-fail \
                           --timeout 5m
                     '''
                 }
