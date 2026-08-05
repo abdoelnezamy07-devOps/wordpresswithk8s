@@ -12,7 +12,7 @@
 #    directoryPerms: "700"
 
 mysql:
-  name: wordpress
+  name: sql-deploy
   tier: sql
   
   replicas: 1
