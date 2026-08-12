@@ -1,0 +1,66 @@
+- name: Install EBS EFS CSI Drivers with Helm
+  hosts: master
+  become: true
+  vars:
+    aws_region: "us-east-1"
+    kubeconfig_path: "/etc/kubernetes/admin.conf"
+  tasks:
+
+    - name: Check Helm Install
+      ansible.builtin.command: helm version
+      register: helm_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: helm_check.rc != 0
+
+    - name: Adding EBS to Helm Repo
+      kubernetes.core.helm_repository:
+        name: aws-ebs-csi-driver
+        repo_url: https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+
+    - name: Adding EFS to Helm Repo
+      kubernetes.core.helm_repository:
+        name: aws-efs-csi-driver
+        repo_url: https://kubernetes-sigs.github.io/aws-efs-csi-driver
+
+    - name: Updata helm repo
+      ansible.builtin.command: helm repo update
+
+    - name: Install AWS EBS CSI Driver
+      kubernetes.core.helm:
+        name: aws-ebs-csi-driver
+        chart_ref: aws-ebs-csi-driver/aws-ebs-csi-driver
+        release_namespace: kube-system
+        state: present
+        kubeconfig: "{{ kubeconfig_path }}"
+        set_values:
+          - value: "controller.region={{ aws_region }}"
+
+    - name: Install  AWS EFS CSI Driver
+      kubernetes.core.helm:
+        name: aws-efs-csi-driver
+        chart_ref: aws-efs-csi-driver/aws-efs-csi-driver
+        release_namespace: kube-system
+        state: present
+        kubeconfig: "{{ kubeconfig_path }}"
+
+
+    - name: Create EBS StorageClass (ebs-sc)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition:
+          apiVersion: storage.k8s.io/v1
+          kind: StorageClass
+          metadata:
+            name: ebs-sc
+          provisioner: ebs.csi.aws.com
+          volumeBindingMode: WaitForFirstConsumer
+          reclaimPolicy: Retain
+          allowVolumeExpansion: true
+          parameters:
+            type: gp3

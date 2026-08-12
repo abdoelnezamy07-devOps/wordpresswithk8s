@@ -1,0 +1,16 @@
+---
+plugin: aws_ec2
+regions:
+  - us-east-1
+
+hostnames:
+  - ip-address
+  - private-ip-address
+
+keyed_groups:
+  - key: tags.Name
+    separator: ""
+
+groups:
+  worker_nodes: "tags.Name is defined and 'master' not in tags.Name"
+

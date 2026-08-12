@@ -1,0 +1,67 @@
+---
+# ==========================================
+# Master Node
+# ==========================================
+- name: Initialize Kubernetes Master Node
+  hosts: master  
+  become: true
+  tasks:
+    - name: Initialize kubeadm with Calico CIDR
+      shell:  kubeadm init --pod-network-cidr=192.168.0.0/16
+      register: kubeadm_output
+      args:
+        creates: /etc/kubernetes/admin.conf 
+
+    - name: Create .kube directory for ubuntu user
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy admin.conf to ubuntu home
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/ubuntu/.kube/config
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    - name: Check if Calico Operator is already installed
+      become: false
+      command: kubectl get deployment tigera-operator -n tigera-operator
+      register: calico_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Calico Operator
+      become: false
+      shell: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
+      when: calico_check.rc != 0
+
+    - name: Install Calico Custom Resources
+      become: false
+      shell: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml
+      when: calico_check.rc != 0
+    
+    - name: Generate Join Command
+      shell: kubeadm token create --print-join-command
+      register: join_command_raw
+    - name: Share Join Command in Memory
+      add_host:
+        name: "K8S_JOIN_HOLDER"
+        cmd: "{{ join_command_raw.stdout }}"
+
+# ==========================================
+# Join-Worker
+# ==========================================
+- name: Join Worker Nodes to the Cluster
+  hosts: worker_nodes 
+  become: true
+  tasks:
+    - name: Execute Kubeadm Join Command
+      shell: "{{ hostvars['K8S_JOIN_HOLDER']['cmd'] }}"
+      args:
+        creates: /etc/kubernetes/kubelet.conf 

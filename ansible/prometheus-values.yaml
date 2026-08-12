@@ -1,0 +1,13 @@
+# prometheus-values.yaml
+
+grafana:
+  service:
+    type: NodePort
+    nodePort: 31000  
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+  service:
+    type: NodePort
+    nodePort: 30900  

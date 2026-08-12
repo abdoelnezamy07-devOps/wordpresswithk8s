@@ -1,0 +1,9 @@
+controller:
+  serviceType: NodePort
+  nodePort: 32000
+
+persistence:
+  enabled: true
+  storageClass: "ebs-sc"   
+  accessMode: ReadWriteOnce
+  size: "20Gi"             
