@@ -58,7 +58,7 @@ wordpress:
   database:
     host: "sql-svc"
     user: "root"
-    name: "wordpress"
+    name: "sql-deploy"
     secret:
       name: "sql-secret"
       key: "password"
