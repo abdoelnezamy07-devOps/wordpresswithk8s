@@ -8,6 +8,8 @@ steps:
     4- ebs and efs policy  and attach it to all Ec2
   ssh:
     ssh command from console aws to master node
+    aws configure
+      add access key and secret access key
   ansible:
    prepare_env
      1- pip install ansible kubernetes
